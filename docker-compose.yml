@@ -3,17 +3,28 @@ version: '3'
 services:
   postgres: 
     image: postgres
+    hostname: postgres
     container_name: postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: redis_db_poc
     volumes:
-      - postgresdata:/home/server/db/data
+      - .:/app
     ports: 
       - "5432:5432"
-    networks:
-      - redispocnetwork
+    restart: always
+
+  redis:
+    image: redis
+    hostname: redis
+    container_name: redis
+    environment:
+      REDIS_PASSWORD: redis
+      REDIS_PORT: 6379
+      REDIS_DATABASES: 0
+    ports:
+      - "6379:6379" 
     restart: always
 
   redis_poc:
@@ -21,13 +32,12 @@ services:
       context: .
     container_name: redis-poc
     volumes:
-      - .:/home/server/
+      - .:/app
     ports:
       - "8085:8085"
-    networks:
-      - redispocnetwork
     depends_on:
       - postgres
+      - redis
     restart: always
 
   pgadmin:
@@ -38,14 +48,17 @@ services:
       PGADMIN_DEFAULT_PASSWORD: pgadmin
     ports:
       - "5050:80"
-    networks:
-      - redispocnetwork
+    volumes:
+      - .:/app
     depends_on:
       - postgres
     restart: always
-
-volumes:
-  postgresdata:
-
-networks:
-  redispocnetwork:
+  
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - .:/app
+    command: ["-path", "app/migrations/", "-database",  "postgres://postgres:postgres@postgres:5432/redis_db_poc?sslmode=disable", "up"]
+    depends_on:
+      - postgres
+    restart: on-failure

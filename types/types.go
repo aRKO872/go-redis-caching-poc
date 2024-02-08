@@ -18,11 +18,35 @@ type RefreshTokenInput struct {
 	InputRefreshToken string `json:"input_refresh_token"`
 }
 
+type UserUpdateInput struct {
+	Age int `json:"age"`
+	Address string `json:"address"`
+	Phone string `json:"phone"`
+}
+
 type User struct {
   Id string `json:"id"`;
   Name string `json:"name"`;
   Email string `json:"email"`;
   Password string `json:"password"`;
+}
+
+type User_Info struct {
+  Id string `json:"id"`;
+  Age int `json:"age"`
+	Address string `json:"address"`
+	Phone string `json:"phone"`
+	UserId string `json:"user_id"`
+}
+
+type Total_User_Data struct {
+	UserId string `json:"user_id"`
+	Age int `json:"age"`
+	Address string `json:"address"`
+	Phone string `json:"phone"`
+	Name string `json:"name"`
+  Email string `json:"email"`
+	UserInfoId string `json:"user_info_id"`
 }
 
 type Claims struct {

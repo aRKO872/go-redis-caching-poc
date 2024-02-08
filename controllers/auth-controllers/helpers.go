@@ -2,11 +2,11 @@ package auth_controllers
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/gin-gonic/gin"
+	
 	"github.com/go-redis-caching-poc/config"
 	db_controllers "github.com/go-redis-caching-poc/controllers/db-controllers"
 	"github.com/go-redis-caching-poc/types"
@@ -16,14 +16,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func errorWriter (err error, errCode int, errStr string, c *gin.Context) {
-	if err != nil {
-		c.JSON(errCode, gin.H{
-			"status": false,
-			"message": errStr,
-		})
-	}
-}
 
 func validName (name string) bool {
 	name = strings.TrimSpace(name);
@@ -92,6 +84,8 @@ func validPassword(password string) bool {
 func checkUserExists (email string, fromLogin bool) (*types.User, error) {
 	var user types.User;
 	result := db_controllers.DB.Where("email = ?", email).First (&user);
+
+	fmt.Println(result == nil, " is true...")
 
 	if result.Error != nil {
 		// User not found

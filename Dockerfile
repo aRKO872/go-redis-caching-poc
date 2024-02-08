@@ -1,6 +1,6 @@
 FROM golang:latest
 
-ENV HOME=/home/server
+ENV HOME=/app
 ENV GO_PORT=8085
 
 WORKDIR ${HOME}

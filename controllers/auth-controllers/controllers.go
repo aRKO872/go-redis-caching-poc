@@ -1,7 +1,6 @@
 package auth_controllers
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -12,23 +11,45 @@ import (
 func SignUp(c *gin.Context) {
 	var input types.SignUpInput
 	bindDataErr := c.Bind(&input);
-	errorWriter(bindDataErr, 400, "field is missing", c)
+	if bindDataErr != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": "field is missing",
+		})
+		return
+	}
 
 	valid := validName (input.Name) && validEmail (input.Email) && validPassword (input.Password)
 
 	if !valid {
-		errorWriter(fmt.Errorf("valid data not provided"), 400, "valid data not provided", c)
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": "valid data not provided",
+		})
+		return
 	}
 
 	// Checking if User trying to sign up already exists
 	_, userExistsError := checkUserExists(input.Email, false)
 
-	errorWriter(userExistsError, 400, userExistsError.Error(), c)
+	if userExistsError != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": userExistsError.Error(),
+		})
+		return
+	}
 
 	// Encrypting Provided Password and Storing User info in DB.
 	savedUser, persistUserError := persistUser(&input);
 
-	errorWriter(persistUserError, 400, persistUserError.Error(), c)
+	if persistUserError != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": persistUserError.Error(),
+		})
+		return
+	}
 
 	// Generate Access and Refresh Tokens 
 	access_token, accessTokenErr := generateToken(
@@ -43,8 +64,20 @@ func SignUp(c *gin.Context) {
 		savedUser.Id,
 	)
 
-	errorWriter(accessTokenErr, 400, accessTokenErr.Error(), c)
-	errorWriter(refreshTokenErr, 400, refreshTokenErr.Error(), c)
+	if accessTokenErr != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": accessTokenErr.Error(),
+		})
+		return
+	}
+	if refreshTokenErr != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": refreshTokenErr.Error(),
+		})
+		return
+	}
 
 	// Successful Sign Up Returns Access and Refresh Tokens :
 	c.JSON(200, gin.H{
@@ -57,22 +90,43 @@ func SignUp(c *gin.Context) {
 func LogIn(c *gin.Context) {
 	var input types.LogInInput
 	bindDataErr := c.Bind(&input);
-	errorWriter(bindDataErr, 400, "field is missing", c)
+	if bindDataErr != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": "field is missing",
+		})
+		return
+	}
 
 	valid := validEmail (input.Email) && validPassword (input.Password)
 
 	if !valid {
-		errorWriter(fmt.Errorf("has incorrect password or email type"), 400, "has incorrect password or email type", c)
+		c.JSON(400, gin.H{
+			"status": false,
+			"message":  "has incorrect password or email type",
+		})
+		return
 	}
 
 	loginUserData, userExistsError := checkUserExists(input.Email, true)
 
-	errorWriter(userExistsError, 400, userExistsError.Error(), c)
+	if userExistsError != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": userExistsError.Error(),
+		})
+		return
+	}
+
 
 	passwordsMatch := ComparePasswords(input.Password, loginUserData.Password);
 
 	if !passwordsMatch {
-		errorWriter(fmt.Errorf("user unauthorized. please check password or email"), 400, "user unauthorized. please check password or email", c)
+		c.JSON(400, gin.H{
+			"status": false,
+			"message":  "user unauthorized. please check password or email",
+		})
+		return
 	}
 
 	// Generate Access and Refresh Tokens 
@@ -88,8 +142,20 @@ func LogIn(c *gin.Context) {
 		loginUserData.Id,
 	)
 
-	errorWriter(accessTokenErr, 400, accessTokenErr.Error(), c)
-	errorWriter(refreshTokenErr, 400, refreshTokenErr.Error(), c)
+	if accessTokenErr != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": accessTokenErr.Error(),
+		})
+		return
+	}
+	if refreshTokenErr != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": refreshTokenErr.Error(),
+		})
+		return
+	}
 
 	// Successful Sign In Returns Access and Refresh Tokens :
 	c.JSON(200, gin.H{
@@ -102,20 +168,42 @@ func LogIn(c *gin.Context) {
 func RefreshToken(c *gin.Context) {
 	var input types.RefreshTokenInput
 	bindDataErr := c.Bind(&input);
-	errorWriter(bindDataErr, 400, "field is missing", c)
+	if bindDataErr != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": bindDataErr.Error(),
+		})
+		return
+	}
 
 	input_access_token, input_refresh_token := input.InputAccessToken, input.InputRefreshToken
 
 	oldTokenDerivedPayload, oldTokenErr := ParseExpiredToken(input_access_token, config.GetConfig().JWT_SECRET_KEY);
 
-	errorWriter(oldTokenErr, 400, oldTokenErr.Error(), c)
+	if oldTokenErr != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": oldTokenErr.Error(),
+		})
+		return
+	}
 
 	refreshTokenPayload, refreshTokenErr := ParseToken(input_refresh_token, config.GetConfig().JWT_SECRET_KEY)
 
-	errorWriter(refreshTokenErr, 400, refreshTokenErr.Error(), c)
+	if refreshTokenErr != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": refreshTokenErr.Error(),
+		})
+		return
+	}
 
 	if oldTokenDerivedPayload.UserId != refreshTokenPayload.UserId {
-		errorWriter(fmt.Errorf("invalid user"), 400, "invalid user", c)
+		c.JSON(400, gin.H{
+			"status": false,
+			"message":  "invalid user",
+		})
+		return
 	}
 
 	// Generate Access and Refresh Tokens 
@@ -131,8 +219,20 @@ func RefreshToken(c *gin.Context) {
 		oldTokenDerivedPayload.UserId,
 	)
 
-	errorWriter(accessTokenErr, 400, accessTokenErr.Error(), c)
-	errorWriter(refreshTokenErr, 400, refreshTokenErr.Error(), c)
+	if accessTokenErr != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": accessTokenErr.Error(),
+		})
+		return
+	}
+	if refreshTokenErr != nil {
+		c.JSON(400, gin.H{
+			"status": false,
+			"message": refreshTokenErr.Error(),
+		})
+		return
+	}
 
 	// Successful Refresh Returns Access and Refresh Tokens :
 	c.JSON(200, gin.H{
